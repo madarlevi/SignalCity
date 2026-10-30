@@ -12,6 +12,12 @@ List<Tower> towers = new();
 List<Person> npcs = new();
 List<Building> buildings = new();
 
+EditorTool[] tools = Enum.GetValues<EditorTool>();
+EditorTool activeTool = EditorTool.Select;
+
+const int toolbarHeight = 50;
+const int panelWidth = 260;
+
 (int index, float distance) closestTowerIndex(Vector2 position)
 {
     float distance = float.MaxValue;
@@ -30,11 +36,11 @@ List<Building> buildings = new();
 
 (int index, float distance) bestTowerIndex(Vector2 position)
 {
-    float signal = float.MaxValue;
+    float signal = float.MinValue;
     int index = -1;
     foreach (Tower tower in towers)
     {
-        float currentSignal = CalculateSignal(tower.Position, position);
+        float currentSignal = CalculateSignal(tower, position);
         if (currentSignal > signal)
         {
             signal = currentSignal;
@@ -44,28 +50,43 @@ List<Building> buildings = new();
     return (index, signal);
 }
 
-float CalculateSignal(Vector2 tower, Vector2 position)
+float CalculateSignal(Tower tower, Vector2 position)
 {
-    float distance = Vector2.Distance(position, tower);
+    float distance = Vector2.Distance(position, tower.Position);
 
     float x = distance / 100f;
 
-    float result = 100f / (1f + x * x);
+    float result = tower.Power / (1f + x * x);
 
     return result;
 }
 
-float MaxSignal = CalculateSignal(new Vector2(0, 0), new Vector2(0, 0));
-int npcCount = 10;
-int speed = 50;
+float MaxSignal = CalculateSignal(new Tower(new Vector2(0, 0), 150f), new Vector2(0, 0));
+int npcStartCount = 10;
 
-for (int i = 0; i < npcCount; i++)
+for (int i = 0; i < npcStartCount; i++)
 {
     npcs.Add(new Person(new Vector2(Raylib.GetRandomValue(0, Raylib.GetScreenWidth()), Raylib.GetRandomValue(0, Raylib.GetScreenHeight()))));
 }
 
 while (!Raylib.WindowShouldClose())
 {
+    Vector2 mouse = Raylib.GetMousePosition();
+
+    if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+    {
+        for (int i = 0; i < tools.Length; i++)
+        {
+            Rectangle button = new(10 + i * 105, 8, 100, 34);
+
+            if (Raylib.CheckCollisionPointRec(mouse, button))
+            {
+                activeTool = tools[i];
+                break;
+            }
+        }
+    }
+
     Raylib.BeginDrawing();
 
     Raylib.ClearBackground(Color.Black);
@@ -77,7 +98,7 @@ while (!Raylib.WindowShouldClose())
             for (int y = 0; y < Raylib.GetScreenHeight(); y += 20)
             {
                 Vector2 position = new(x+10, y+10);
-                float signal = CalculateSignal(towers[bestTowerIndex(position).index].Position, position);
+                float signal = CalculateSignal(towers[bestTowerIndex(position).index], position);
                 float normalizedSignal = Math.Clamp(signal / MaxSignal, 0f, 1f);
 
                 byte red = (byte)(255 * (1f - normalizedSignal));
@@ -89,17 +110,25 @@ while (!Raylib.WindowShouldClose())
         }
     }
 
-    if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+    if (Raylib.IsMouseButtonPressed(MouseButton.Left) && mouse.Y >= toolbarHeight && mouse.X < Raylib.GetScreenWidth() - panelWidth)
     {
-        towers.Add(new Tower(Raylib.GetMousePosition(), Raylib.GetRandomValue(50, 150)));
-    }
-
-    if (Raylib.IsMouseButtonPressed(MouseButton.Right))
-    {
-        (int index, float distance) result = closestTowerIndex(Raylib.GetMousePosition());
-        if (result.distance < 20)
+        switch (activeTool)
         {
-            towers.RemoveAt(result.index);
+            case EditorTool.Tower:
+                towers.Add(new Tower(Raylib.GetMousePosition(), Raylib.GetRandomValue(50, 150)));
+                break;
+
+            case EditorTool.Person:
+                npcs.Add(new Person(mouse));
+                break;
+
+            case EditorTool.Delete:
+                (int index, float distance) result = closestTowerIndex(Raylib.GetMousePosition());
+                if (result.distance < 20)
+                {
+                    towers.RemoveAt(result.index);
+                }
+                break;
         }
     }
 
@@ -118,7 +147,7 @@ while (!Raylib.WindowShouldClose())
             float distance = difference.Length();
             if (distance > 40)
             {
-                float movement = speed * Raylib.GetFrameTime();
+                float movement = npcs[i].Speed * Raylib.GetFrameTime();
 
                 if (distance > movement)
                 {
@@ -129,8 +158,27 @@ while (!Raylib.WindowShouldClose())
         }
         Raylib.DrawCircleV(npcs[i].Position, 5, Color.Magenta);
     }
-    
-    Raylib.DrawText("Tornyok száma: " + towers.Count, 10, 10, 20, Color.Black);
+
+    Raylib.DrawRectangle(0, 0, 1280, toolbarHeight, Color.DarkGray);
+
+    for (int i = 0; i < tools.Length; i++)
+    {
+        Rectangle button = new(10 + i * 105, 8, 100, 34);
+
+        Color color = activeTool == tools[i]
+            ? Color.Blue
+            : Color.Gray;
+
+        Raylib.DrawRectangleRec(button, color);
+
+        Raylib.DrawText(
+            tools[i].ToString(),
+            (int)button.X + 5,
+            (int)button.Y + 10,
+            12,
+            Color.White
+        );
+    }
 
     Raylib.EndDrawing();
 }
