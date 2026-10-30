@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SignalCity")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+92070c7ffdccc8a22eb0a88ba34e0e1d62466997")]
 [assembly: System.Reflection.AssemblyProductAttribute("SignalCity")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SignalCity")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

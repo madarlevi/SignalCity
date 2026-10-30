@@ -21,3 +21,4 @@ C:\Users\Levente\source\repos\SignalCity\SignalCity\obj\Debug\net10.0\refint\Sig
 C:\Users\Levente\source\repos\SignalCity\SignalCity\obj\Debug\net10.0\SignalCity.pdb
 C:\Users\Levente\source\repos\SignalCity\SignalCity\obj\Debug\net10.0\SignalCity.genruntimeconfig.cache
 C:\Users\Levente\source\repos\SignalCity\SignalCity\obj\Debug\net10.0\ref\SignalCity.dll
+C:\Users\Levente\source\repos\SignalCity\SignalCity\obj\Debug\net10.0\SignalCity.sourcelink.json
