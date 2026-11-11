@@ -1,0 +1,94 @@
+
+name: SignalCity Build & Release
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+
+          - os: ubuntu-latest
+            rid: linux-x64
+
+          - os: macos-latest
+            rid: osx-arm64
+
+          - os: macos-15-intel
+            rid: osx-x64
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Publish SignalCity
+        shell: pwsh
+        run: |
+          dotnet publish ./SignalCity.csproj `
+            --configuration Release `
+            --runtime ${{ matrix.rid }} `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -o ./publish
+
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./dist
+
+          Compress-Archive `
+            -Path ./publish/* `
+            -DestinationPath ./dist/SignalCity-${{ matrix.rid }}.zip
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalCity-${{ matrix.rid }}
+          path: ./dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: SignalCity-*
+          path: ./dist
+          merge-multiple: true
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./dist/*.zip
+          generate_release_notes: true

@@ -3,6 +3,10 @@
 
 **A 2D radio signal and human behavior simulator built with C# and Raylib-cs.**
 
+[![SignalCity Gameplay Demo](https://img.youtube.com/vi/TaFaNTNhG4k/maxresdefault.jpg)](https://www.youtube.com/watch?v=TaFaNTNhG4k)
+
+Click the image above to watch the SignalCity gameplay demo!
+
 ## 🌍 About
 
 SignalCity is an interactive 2D simulation where you can build your own environment, place radio towers, buildings, and people, and observe how signal coverage influences human behavior.
