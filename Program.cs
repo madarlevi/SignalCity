@@ -4,7 +4,9 @@ using SignalCity;
 using System.Numerics;
 
 
+Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1280, 720, "SignalCity");
+Raylib.SetWindowMinSize(640, 480);
 Raylib.SetTargetFPS(60);
 
 
@@ -310,7 +312,7 @@ while (!Raylib.WindowShouldClose())
         }
     }
 
-    Raylib.DrawRectangle(0, 0, 1280, toolbarHeight, Color.DarkGray);
+    Raylib.DrawRectangle(0, 0, Raylib.GetScreenWidth(), toolbarHeight, Color.DarkGray);
 
     for (int i = 0; i < tools.Length; i++)
     {
