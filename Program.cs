@@ -1,7 +1,7 @@
-﻿
-using Raylib_cs;
+﻿using Raylib_cs;
 using SignalCity;
 using System.Numerics;
+using System.Linq;
 
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
@@ -133,9 +133,8 @@ for (int i = 0; i < npcStartCount; i++)
 while (!Raylib.WindowShouldClose())
 {
 
-
+    //Changing tool
     Vector2 mouse = Raylib.GetMousePosition();
-
     if (Raylib.IsMouseButtonPressed(MouseButton.Left))
     {
         for (int i = 0; i < tools.Length; i++)
@@ -151,11 +150,11 @@ while (!Raylib.WindowShouldClose())
     }
 
     // Drawing
-
     Raylib.BeginDrawing();
 
     Raylib.ClearBackground(Color.Black);
 
+    //Draw signal strength grid
     if (towers.Count != 0)
     {
         for (int x = 0; x < Raylib.GetScreenWidth(); x += 20)
@@ -175,24 +174,52 @@ while (!Raylib.WindowShouldClose())
         }
     }
 
+    //Doing tool things
     if (Raylib.IsMouseButtonPressed(MouseButton.Left) && mouse.Y >= toolbarHeight && mouse.X < Raylib.GetScreenWidth() - panelWidth)
     {
         switch (activeTool)
         {
             case EditorTool.Tower:
-                towers.Add(new Tower(Raylib.GetMousePosition(), Raylib.GetRandomValue(50, 150)));
-                break;
+                {
+                    Vector2 pos = mouse;
+
+                    bool buildingCollision = buildings.Any(b =>
+                        b.IntersectsCircle(pos, 20f));
+
+                    bool towerCollision = towers.Any(t =>
+                        Vector2.Distance(t.Position, pos) < 40f);
+
+                    if (!buildingCollision && !towerCollision)
+                    {
+                        towers.Add(new Tower(pos, Raylib.GetRandomValue(50, 150)));
+                    }
+
+                    break;
+                }
 
             case EditorTool.Person:
-                npcs.Add(new Person(mouse));
+                if (!buildings.Any(b => b.Contains(mouse)))
+                {
+                    npcs.Add(new Person(mouse));
+                }
                 break;
 
             case EditorTool.RectangleBuilding:
-                buildings.Add(new Building(Raylib.GetMousePosition(), BuildingShape.Rectangle, new Vector2(Raylib.GetRandomValue(50, 150), Raylib.GetRandomValue(50, 150)), 10));
+                Building tempR = new Building(mouse, BuildingShape.Rectangle, new Vector2(50, 50), 10);
+                if (!buildings.Any(b => tempR.Intersects(b)) &&
+                    !towers.Any(t => tempR.IntersectsCircle(t.Position, 20f)))
+                {
+                    buildings.Add(tempR);
+                }
                 break;
 
             case EditorTool.CircleBuilding:
-                buildings.Add(new Building(Raylib.GetMousePosition(), BuildingShape.Circle, new Vector2(Raylib.GetRandomValue(50, 150), Raylib.GetRandomValue(50, 150)), 10));
+                Building tempC = new Building(Raylib.GetMousePosition(), BuildingShape.Circle, new Vector2(50, 50), 10);
+                if (!buildings.Any(b => tempC.IntersectsCircle(b.Position, b.Size.X / 2f)) &&
+                    !towers.Any(t => tempC.IntersectsCircle(t.Position, 20f)))
+                {
+                    buildings.Add(tempC);
+                }
                 break;
 
             case EditorTool.Delete:
@@ -266,16 +293,33 @@ while (!Raylib.WindowShouldClose())
         }
     }
 
+    //Drawing buildings
     foreach (Building building in buildings)
     {
-        Raylib.DrawRectangleV(building.Position, building.Size, Color.Green);
+        switch (building.Shape)
+        {
+            case BuildingShape.Rectangle:
+                Raylib.DrawRectangleV(building.Position - building.Size / 2f, building.Size, Color.Green);
+                break;
+            case BuildingShape.Circle:
+                Raylib.DrawCircleV(building.Position, building.Size.X / 2f, Color.Green);
+                break;
+        }
 
         if (selectedBuilding == building && selectedType == "Building")
         {
-            Raylib.DrawRectangleLines((int)building.Position.X, (int)building.Position.Y, (int)building.Size.X, (int)building.Size.Y, Color.Yellow);
+            if (selectedBuilding.Shape == BuildingShape.Rectangle)
+            {
+                Raylib.DrawRectangleLines((int)(building.Position.X - building.Size.X / 2f), (int)(building.Position.Y - building.Size.Y / 2f), (int)building.Size.X, (int)building.Size.Y, Color.Yellow);
+            }
+            else if (selectedBuilding.Shape == BuildingShape.Circle)
+            {
+                Raylib.DrawCircleLines((int)building.Position.X, (int)building.Position.Y, building.Size.X / 2f, Color.Yellow);
+            }
         }
     }
 
+    //Drawing towers
     foreach (Tower tower in towers)
     {
         Raylib.DrawCircleV(tower.Position, 20, Color.Blue);
@@ -286,6 +330,7 @@ while (!Raylib.WindowShouldClose())
         }
     }
 
+    //Drawing NPCs
     for (int i = 0; i < npcs.Count; i++)
     {
         if (towers.Count != 0)
@@ -298,7 +343,7 @@ while (!Raylib.WindowShouldClose())
             {
                 float movement = npcs[i].Speed * Raylib.GetFrameTime();
 
-                if (distance > movement)
+                if (distance > movement && !buildings.Any(b => b.Contains(npcs[i].Position)))
                 {
                     Vector2 direction = Vector2.Normalize(difference);
                     npcs[i].Position += direction * movement;
@@ -314,6 +359,7 @@ while (!Raylib.WindowShouldClose())
 
     Raylib.DrawRectangle(0, 0, Raylib.GetScreenWidth(), toolbarHeight, Color.DarkGray);
 
+    //Draw toolbar buttons
     for (int i = 0; i < tools.Length; i++)
     {
         Rectangle button = new(10 + i * 105, 8, 100, 34);
@@ -333,6 +379,7 @@ while (!Raylib.WindowShouldClose())
         );
     }
 
+    //Draw properties panel
     int panelX = Raylib.GetScreenWidth() - panelWidth;
 
     Raylib.DrawRectangle(
@@ -348,6 +395,7 @@ while (!Raylib.WindowShouldClose())
         24, Color.White
     );
 
+    //Properies panel content
     if (selectedTower != null && selectedType == "Tower")
     {
         Raylib.DrawText(
@@ -462,6 +510,162 @@ while (!Raylib.WindowShouldClose())
         {
             selectedPerson.Position =
                 new Vector2(selectedPerson.Position.X, Math.Min(Raylib.GetScreenHeight() - toolbarHeight, selectedPerson.Position.Y + 10f));
+        }
+    }
+    else if (selectedBuilding != null && selectedType == "Building" && selectedBuilding.Shape == BuildingShape.Rectangle)
+    {
+        Raylib.DrawText(
+            "Building",
+            panelX + 20, 120,
+            22, Color.White
+        );
+
+        Raylib.DrawText(
+            $"X: {selectedBuilding.Position.X:0}",
+            panelX + 20, 285,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 325, 45, 35), "-"))
+        {
+            selectedBuilding.Position =
+                new Vector2(Math.Max(0f, selectedBuilding.Position.X - 10f), selectedBuilding.Position.Y);
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 325, 45, 35), "+"))
+        {
+            selectedBuilding.Position =
+                new Vector2(Math.Min(Raylib.GetScreenWidth() - panelWidth, selectedBuilding.Position.X + 10f), selectedBuilding.Position.Y);
+        }
+
+        Raylib.DrawText(
+            $"Y: {selectedBuilding.Position.Y:0}",
+            panelX + 20, 400,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 440, 45, 35), "-"))
+        {
+            selectedBuilding.Position =
+                new Vector2(selectedBuilding.Position.X, Math.Max(toolbarHeight, selectedBuilding.Position.Y - 10f));
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 440, 45, 35), "+"))
+        {
+            selectedBuilding.Position =
+                new Vector2(selectedBuilding.Position.X, Math.Min(Raylib.GetScreenHeight() - toolbarHeight, selectedBuilding.Position.Y + 10f));
+        }
+
+        Raylib.DrawText(
+            $"Size X: {selectedBuilding.Size.X:0}",
+            panelX + 20, 515,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 555, 45, 35), "-"))
+        {
+            selectedBuilding.Size =
+                new Vector2(Math.Max(0f, selectedBuilding.Size.X - 10f), selectedBuilding.Size.Y);
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 555, 45, 35), "+"))
+        {
+            selectedBuilding.Size =
+                new Vector2(Math.Min(Raylib.GetScreenWidth() - panelWidth, selectedBuilding.Size.X + 10f), selectedBuilding.Size.Y);
+        }
+
+        Raylib.DrawText(
+            $"Size Y: {selectedBuilding.Size.Y:0}",
+            panelX + 20, 620,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 660, 45, 35), "-"))
+        {
+            selectedBuilding.Size =
+                new Vector2(selectedBuilding.Size.X, Math.Max(0f, selectedBuilding.Size.Y - 10f));
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 660, 45, 35), "+"))
+        {
+            selectedBuilding.Size =
+                new Vector2(selectedBuilding.Size.X, Math.Min(Raylib.GetScreenHeight() - toolbarHeight, selectedBuilding.Size.Y + 10f));
+        }
+    }
+    else if (selectedBuilding != null && selectedType == "Building" && selectedBuilding.Shape == BuildingShape.Circle)
+    {
+        Raylib.DrawText(
+            "Building",
+            panelX + 20, 120,
+            22, Color.White
+        );
+
+        Raylib.DrawText(
+            $"X: {selectedBuilding.Position.X:0}",
+            panelX + 20, 285,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 325, 45, 35), "-"))
+        {
+            selectedBuilding.Position =
+                new Vector2(Math.Max(0f, selectedBuilding.Position.X - 10f), selectedBuilding.Position.Y);
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 325, 45, 35), "+"))
+        {
+            selectedBuilding.Position =
+                new Vector2(Math.Min(Raylib.GetScreenWidth() - panelWidth, selectedBuilding.Position.X + 10f), selectedBuilding.Position.Y);
+        }
+
+        Raylib.DrawText(
+            $"Y: {selectedBuilding.Position.Y:0}",
+            panelX + 20, 400,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 440, 45, 35), "-"))
+        {
+            selectedBuilding.Position =
+                new Vector2(selectedBuilding.Position.X, Math.Max(toolbarHeight, selectedBuilding.Position.Y - 10f));
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 440, 45, 35), "+"))
+        {
+            selectedBuilding.Position =
+                new Vector2(selectedBuilding.Position.X, Math.Min(Raylib.GetScreenHeight() - toolbarHeight, selectedBuilding.Position.Y + 10f));
+        }
+
+        Raylib.DrawText(
+            $"Radius: {selectedBuilding.Size.X:0}",
+            panelX + 20, 515,
+            20, Color.White
+        );
+
+        if (DrawButton(
+            new Rectangle(panelX + 20, 555, 45, 35), "-"))
+        {
+            selectedBuilding.Size =
+                new Vector2(Math.Max(0f, selectedBuilding.Size.X - 10f), selectedBuilding.Size.Y);
+        }
+
+        if (DrawButton(
+            new Rectangle(panelX + 80, 555, 45, 35), "+"))
+        {
+            selectedBuilding.Size =
+                new Vector2(Math.Min(Raylib.GetScreenWidth() - panelWidth, selectedBuilding.Size.X + 10f), selectedBuilding.Size.Y);
         }
     }
     else
