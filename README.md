@@ -3,7 +3,9 @@
 
 **A 2D radio signal and human behavior simulator built with C# and Raylib-cs.**
 
-[![SignalCity Gameplay Demo](https://img.youtube.com/vi/TaFaNTNhG4k/maxresdefault.jpg)](https://www.youtube.com/watch?v=TaFaNTNhG4k)
+[![SignalCity Gameplay Demo](https://img.youtube.com/vi/eBCBH9ecCHc/maxresdefault.jpg)](https://www.youtube.com/watch?v=eBCBH9ecCHc)
+
+[Demo v1](https://www.youtube.com/watch?v=TaFaNTNhG4k)
 
 Click the image above to watch the SignalCity gameplay demo!
 
