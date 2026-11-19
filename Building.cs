@@ -127,5 +127,73 @@ namespace SignalCity
 
             return dx * dx + dy * dy <= radius * radius;
         }
+
+        public bool IntersectsSegment(Vector2 start, Vector2 end)
+        {
+            Vector2 direction = end- start;
+
+            if (Shape == BuildingShape.Circle)
+            {
+                float t = Vector2.Dot(Position - start, direction) / direction.LengthSquared();
+                t = Math.Clamp(t, 0f, 1f);
+                Vector2 closestPoint = start + t * direction;
+                float radius = Size.X / 2f;
+                return Vector2.DistanceSquared(Position, closestPoint) <= radius * radius;
+            }
+
+            float minX = Position.X - Size.X / 2f;
+            float maxX = Position.X + Size.X / 2f;
+            float minY = Position.Y - Size.Y / 2f;
+            float maxY = Position.Y + Size.Y / 2f;
+
+            float tMin = 0f;
+            float tMax = 1f;
+
+            if (!ClipSegment(-direction.X, start.X - minX, ref tMin, ref tMax))
+                return false;
+
+            if (!ClipSegment(direction.X, maxX - start.X, ref tMin, ref tMax))
+                return false;
+
+            if (!ClipSegment(-direction.Y, start.Y - minY, ref tMin, ref tMax))
+                return false;
+
+            if (!ClipSegment(direction.Y, maxY - start.Y, ref tMin, ref tMax))
+                return false;
+
+            return true;
+        }
+
+        private static bool ClipSegment(float p, float q, ref float tMin, ref float tMax)
+        {
+            if (p == 0f)
+            {
+                return q >= 0f;
+            }
+            float r = q / p;
+            if (p < 0)
+            {
+                if (r > tMax)
+                {
+                    return false;
+                }
+                else if (r > tMin)
+                {
+                    tMin = r;
+                }
+            }
+            else
+            {
+                if (r < tMin)
+                {
+                    return false;
+                }
+                else if (r < tMax)
+                {
+                    tMax = r;
+                }
+            }
+            return true;
+        }
     }
 }

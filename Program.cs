@@ -1,7 +1,7 @@
 ﻿using Raylib_cs;
 using SignalCity;
 using System.Numerics;
-using System.Linq;
+using System.Security;
 
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
@@ -23,6 +23,7 @@ Tower? selectedTower = null;
 
 const int toolbarHeight = 50;
 const int panelWidth = 260;
+bool stopped = false;
 
 (int index, float distance) closestTowerIndex(Vector2 position)
 {
@@ -92,11 +93,20 @@ float CalculateSignal(Tower tower, Vector2 position)
 {
     float distance = Vector2.Distance(position, tower.Position);
 
-    float x = distance / 100f;
+    float range = 450f;
+    float falloff = 2f;
 
-    float result = tower.Power / (1f + x * x);
+    float signal = tower.Power / (1f + (float)Math.Pow(distance / range, falloff));
 
-    return result;
+    foreach (Building building in buildings)
+    {
+        if (building.IntersectsSegment(tower.Position, position))
+        {
+            float absorption = Math.Clamp(building.Absorption / 100f, 0f, 1f);
+            signal *= 1f - absorption;
+        }
+    }
+    return signal;
 }
 
 bool DrawButton(Rectangle rect, string text)
@@ -123,6 +133,93 @@ bool DrawButton(Rectangle rect, string text)
 
 float MaxSignal = CalculateSignal(new Tower(new Vector2(0, 0), 150f), new Vector2(0, 0));
 int npcStartCount = 10;
+
+Vector2? FindBestNextCell(Vector2 currentPosition, Vector2 previousDirection, float screenWidth, float screenHeight, float speed)
+{
+    float step = speed / 50f;
+    float personRadius = 5f;
+
+    Vector2[] directions =
+    {
+        new(-1, -1),
+        new(0, -1),
+        new(1, -1),
+        new(-1, 0),
+        new(1, 0),
+        new(-1, 1),
+        new(0, 1),
+        new(1, 1)
+    };
+
+    Vector2? bestPosition = null;
+    float temps = 0f;
+    foreach (Tower tower in towers)
+    {
+        temps = MathF.Max(temps, CalculateSignal(tower, currentPosition));
+    }
+
+    float bestScore = temps / MaxSignal;
+
+    foreach (Vector2 direction in directions)
+    {
+        Vector2 candidate = currentPosition + direction * step;
+
+        if (candidate.X < personRadius || candidate.Y < personRadius ||
+            candidate.X > screenWidth - personRadius || candidate.Y > screenHeight - personRadius)
+        {
+            continue;
+        }
+
+        bool blocked = buildings.Any(b => b.IntersectsCircle(candidate, personRadius));
+
+        if (towers.Any(tower => Vector2.Distance(candidate, tower.Position) < 25f))
+        {
+            blocked = true;
+        }
+
+        if (blocked)
+        {
+            continue;
+        }
+
+        float signal = 0f;
+
+        foreach (Tower tower in towers)
+        {
+            signal = MathF.Max(signal, CalculateSignal(tower, candidate));
+        }
+
+        float momentum = 0f;
+
+        if (previousDirection.LengthSquared() > 0f)
+        {
+            momentum = Vector2.Dot(Vector2.Normalize(direction), Vector2.Normalize(previousDirection));
+        }
+
+        float score = signal / MaxSignal;
+
+        if (score > bestScore)
+        {
+            bestScore = score;
+            bestPosition = candidate;
+        }
+    }
+    if (bestPosition == null && closestTowerIndex(currentPosition).distance > 50)
+    {
+        Vector2 diff = towers[closestTowerIndex(currentPosition).index].Position - currentPosition;
+        Vector2 direction = diff == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(diff);
+
+        if (MathF.Abs(diff.X) >= MathF.Abs(diff.Y))
+        {
+            return currentPosition + new Vector2(0, step*2);
+        }
+        else
+        {
+            return currentPosition + new Vector2(step*2, 0);
+        }
+    }
+    return bestPosition;
+}
 
 for (int i = 0; i < npcStartCount; i++)
 {
@@ -162,7 +259,7 @@ while (!Raylib.WindowShouldClose())
             for (int y = 0; y < Raylib.GetScreenHeight(); y += 20)
             {
                 Vector2 position = new(x+10, y+10);
-                float signal = CalculateSignal(towers[bestTowerIndex(position).index], position);
+                float signal = bestTowerIndex(position).distance;
                 float normalizedSignal = Math.Clamp(signal / MaxSignal, 0f, 1f);
 
                 byte red = (byte)(255 * (1f - normalizedSignal));
@@ -333,21 +430,18 @@ while (!Raylib.WindowShouldClose())
     //Drawing NPCs
     for (int i = 0; i < npcs.Count; i++)
     {
-        if (towers.Count != 0)
+        if (towers.Count != 0 && !stopped)
         {
-            Vector2 closestTower = towers[bestTowerIndex(npcs[i].Position).index].Position;
-            Vector2 difference = closestTower - npcs[i].Position;
+            Vector2? nextPosition = FindBestNextCell(npcs[i].Position, npcs[i].PreviousDirection, Raylib.GetScreenWidth() - panelWidth, Raylib.GetScreenHeight(), npcs[i].Speed);
 
-            float distance = difference.Length();
-            if (distance > 40)
+            if (nextPosition.HasValue)
             {
-                float movement = npcs[i].Speed * Raylib.GetFrameTime();
-
-                if (distance > movement && !buildings.Any(b => b.Contains(npcs[i].Position)))
-                {
-                    Vector2 direction = Vector2.Normalize(difference);
-                    npcs[i].Position += direction * movement;
-                }
+                npcs[i].PreviousDirection = Vector2.Normalize(nextPosition.Value - npcs[i].Position);
+                npcs[i].Position = nextPosition.Value;
+            }
+            else
+            {
+                npcs[i].PreviousDirection = Vector2.Zero;
             }
         }
         Raylib.DrawCircleV(npcs[i].Position, 5, Color.Magenta);
@@ -675,6 +769,23 @@ while (!Raylib.WindowShouldClose())
             panelX + 20, 120,
             18, Color.LightGray
         );
+    }
+
+    if (stopped)
+    {
+        if (DrawButton(
+                new Rectangle(panelX + 20, 700, 205, 35), "Start"))
+        {
+            stopped = !stopped;
+        }
+    }
+    else
+    {
+        if (DrawButton(
+                new Rectangle(panelX + 20, 700, 205, 35), "Stop"))
+        {
+            stopped = !stopped;
+        }
     }
 
     Raylib.EndDrawing();

@@ -20,10 +20,11 @@ The goal is to explore how wireless networks, obstacles, and individual decision
 - 🏙️ Create a customizable 2D environment.
 - 🧍 Simulate people searching for better internet connections.
 - 🛠️ Interactive editor with a toolbar and property controls.
+- 🏢 Signal attenuation caused by buildings.
 
 ## 🧠 Planned Features
 
-- Signal attenuation caused by buildings.
+
 - Individual personalities, including laziness and internet demand.
 - Social interactions and information sharing between people.
 - Network congestion and bandwidth distribution.
@@ -67,7 +68,5 @@ SignalCity uses simplified mathematical models of radio signal propagation and a
 It is an educational simulation, not a professional radio network planning tool.
 
 ## 🚧 Project Status
-
-**Work in progress.**
 
 SignalCity is being developed as part of Hack Club's Cubed program.

@@ -8,6 +8,7 @@ namespace SignalCity
     public class Person
     {
         public Vector2 Position { get; set; }
+        public Vector2 PreviousDirection { get; set; }
 
         public float Laziness { get; set; }
         public float InternetNeed { get; set; }
